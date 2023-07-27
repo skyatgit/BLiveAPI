@@ -201,13 +201,20 @@ public class BLiveApi
 
     private static (ulong?, ulong?) GetRoomIdAndUid(ulong shortRoomId)
     {
-        var url = $"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomBaseInfo?room_ids={shortRoomId}&req_biz=web/";
-        var result = new HttpClient().GetStringAsync(url).Result;
-        var jsonResult = (JObject)JsonConvert.DeserializeObject(result);
-        var roomInfo = (JObject)jsonResult?["data"]?["by_room_ids"]?.Values().FirstOrDefault();
-        var roomId = (ulong?)roomInfo?.GetValue("room_id");
-        var uid = (ulong?)roomInfo?.GetValue("uid");
-        return (roomId, uid);
+        try
+        {
+            var url = $"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomBaseInfo?room_ids={shortRoomId}&req_biz=web/";
+            var result = new HttpClient().GetStringAsync(url).Result;
+            var jsonResult = (JObject)JsonConvert.DeserializeObject(result);
+            var roomInfo = (JObject)jsonResult?["data"]?["by_room_ids"]?.Values().FirstOrDefault();
+            var roomId = (ulong?)roomInfo?.GetValue("room_id");
+            var uid = (ulong?)roomInfo?.GetValue("uid");
+            return (roomId, uid);
+        }
+        catch
+        {
+            throw new Exception("网络错误");
+        }
     }
 
     public async Task Close()
@@ -226,7 +233,7 @@ public class BLiveApi
         {
             _webSocketCancelToken = new CancellationTokenSource();
             (_roomId, _uid) = GetRoomIdAndUid(roomId);
-            if (_roomId is null || _uid is null) throw new Exception("房间号无效或网络错误");
+            if (_roomId is null || _uid is null) throw new Exception("房间号无效");
             _clientWebSocket = new ClientWebSocket();
             var authBody = new { uid = _uid, roomid = _roomId, protover = 3, platform = "web", type = 2 };
             var authPacket = CreateWsPacket(ClientOperation.OpAuth, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(authBody)));
