@@ -48,6 +48,21 @@ public class BLiveApi
     /// </summary>
     public event BLiveEventHandler<(string cmd, JObject rawData)> OtherMessages;
 
+    /// <summary>
+    ///     WebSocket异常关闭
+    /// </summary>
+    public event BLiveEventHandler<(string message, int code)> WebSocketError;
+
+    /// <summary>
+    ///     WebSocket主动关闭
+    /// </summary>
+    public event BLiveEventHandler<(string message, int code)> WebSocketClose;
+
+    /// <summary>
+    ///     解析消息过程出现的错误，不影响WebSocket正常运行，所以不抛出异常
+    /// </summary>
+    public event BLiveEventHandler<(string message, Exception e)> DecodeError;
+
     private static byte[] GetChildFromProtoData(byte[] protoData, int target)
     {
         using (var input = new CodedInputStream(protoData))
@@ -80,8 +95,10 @@ public class BLiveApi
                 break;
             }
             default:
+            {
                 OtherMessages?.Invoke(this, (sms["cmd"].ToString(), sms));
                 break;
+            }
         }
     }
 
@@ -92,7 +109,7 @@ public class BLiveApi
         {
             2 => BitConverter.ToInt16(bytes, 0),
             4 => BitConverter.ToInt32(bytes, 0),
-            _ => throw new Exception("字节集长度有误")
+            _ => throw new InvalidBytesLengthException()
         };
     }
 
@@ -113,7 +130,7 @@ public class BLiveApi
                 DecodeSms((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)));
                 break;
             default:
-                throw new Exception($"错误的ServerOperation:{operation}");
+                throw new UnknownServerOperationException(operation);
         }
     }
 
@@ -142,7 +159,7 @@ public class BLiveApi
                     packetData = Brotli.DecompressBuffer(body, 0, body.Length);
                     continue;
                 default:
-                    throw new Exception($"未知的Version:{version}");
+                    throw new UnknownVersionException(version);
             }
 
             break;
@@ -158,9 +175,21 @@ public class BLiveApi
             var result = await _clientWebSocket.ReceiveAsync(new ArraySegment<byte>(tempBuffer), _webSocketCancelToken.Token);
             buffer.AddRange(new ArraySegment<byte>(tempBuffer, 0, result.Count));
             if (!result.EndOfMessage) continue;
-            DecodePacket(buffer.ToArray());
-            buffer.Clear();
+            try
+            {
+                DecodePacket(buffer.ToArray());
+            }
+            catch (Exception e)
+            {
+                DecodeError?.Invoke(this, (e.Message, e));
+            }
+            finally
+            {
+                buffer.Clear();
+            }
         }
+
+        throw new OperationCanceledException();
     }
 
     private async Task SendHeartbeat(ArraySegment<byte> heartPacket)
@@ -168,8 +197,10 @@ public class BLiveApi
         while (_clientWebSocket.State == WebSocketState.Open)
         {
             await _clientWebSocket.SendAsync(heartPacket, WebSocketMessageType.Binary, true, _webSocketCancelToken.Token);
-            await Task.Delay(TimeSpan.FromSeconds(20),_webSocketCancelToken.Token);
+            await Task.Delay(TimeSpan.FromSeconds(20), _webSocketCancelToken.Token);
         }
+
+        throw new OperationCanceledException();
     }
 
     private static byte[] ToBigEndianBytes(int value)
@@ -209,11 +240,16 @@ public class BLiveApi
             var roomInfo = (JObject)jsonResult?["data"]?["by_room_ids"]?.Values().FirstOrDefault();
             var roomId = (ulong?)roomInfo?.GetValue("room_id");
             var uid = (ulong?)roomInfo?.GetValue("uid");
+            if (roomId is null || uid is null) throw new InvalidRoomIdException();
             return (roomId, uid);
+        }
+        catch (InvalidRoomIdException)
+        {
+            throw;
         }
         catch
         {
-            throw new Exception("网络错误");
+            throw new NetworkException();
         }
     }
 
@@ -221,19 +257,16 @@ public class BLiveApi
     {
         _webSocketCancelToken?.Cancel();
         if (_clientWebSocket is not null && _clientWebSocket.State == WebSocketState.Open)
-        {
             await _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close", CancellationToken.None);
-        }
     }
 
     public async Task Connect(ulong roomId)
     {
-        if (_webSocketCancelToken is not null) throw new Exception("禁止同时运行多个Connect");
+        if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();
         try
         {
             _webSocketCancelToken = new CancellationTokenSource();
             (_roomId, _uid) = GetRoomIdAndUid(roomId);
-            if (_roomId is null || _uid is null) throw new Exception("房间号无效");
             _clientWebSocket = new ClientWebSocket();
             var authBody = new { uid = _uid, roomid = _roomId, protover = 3, platform = "web", type = 2 };
             var authPacket = CreateWsPacket(ClientOperation.OpAuth, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(authBody)));
@@ -241,6 +274,17 @@ public class BLiveApi
             await _clientWebSocket.ConnectAsync(new Uri(WsHost), _webSocketCancelToken.Token);
             await _clientWebSocket.SendAsync(authPacket, WebSocketMessageType.Binary, true, _webSocketCancelToken.Token);
             await Task.WhenAll(ReceiveMessage(), SendHeartbeat(heartPacket));
+        }
+        catch (OperationCanceledException)
+        {
+            WebSocketClose?.Invoke(this, ("WebSocket主动关闭", 0));
+            throw;
+        }
+        catch (WebSocketException)
+        {
+            WebSocketError?.Invoke(this, ("WebSocket异常关闭", -1));
+            _webSocketCancelToken?.Cancel();
+            throw;
         }
         finally
         {

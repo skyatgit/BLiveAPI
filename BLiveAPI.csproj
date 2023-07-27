@@ -85,6 +85,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="BLiveAPI.cs" />
+        <Compile Include="Exceptions.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
     <ItemGroup>
