@@ -13,6 +13,9 @@ using Newtonsoft.Json.Linq;
 
 namespace BLiveAPI;
 
+/// <summary>
+///     B站直播间弹幕接口
+/// </summary>
 public class BLiveApi : BLiveEvents
 {
     private const string WsHost = "wss://broadcastlv.chat.bilibili.com/sub";
@@ -212,6 +215,9 @@ public class BLiveApi : BLiveEvents
         }
     }
 
+    /// <summary>
+    ///     关闭当前对象中的WebSocket
+    /// </summary>
     public async Task Close()
     {
         _webSocketCancelToken?.Cancel();
@@ -219,6 +225,10 @@ public class BLiveApi : BLiveEvents
             await _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close", CancellationToken.None);
     }
 
+    /// <summary>
+    ///     连接指定的直播间
+    /// </summary>
+    /// <param name="roomId">直播间id,可以是短位id</param>
     public async Task Connect(ulong roomId)
     {
         if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();

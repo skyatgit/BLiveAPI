@@ -3,8 +3,12 @@ using Newtonsoft.Json.Linq;
 
 namespace BLiveAPI;
 
+/// <summary>
+///     BLiveAPI的各种事件
+/// </summary>
 public abstract class BLiveEvents
 {
+    /// <inheritdoc />
     public delegate void BLiveEventHandler<in TEventArgs>(object sender, TEventArgs e);
 
     /// <summary>
@@ -12,6 +16,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(JObject authReply, byte[] rawData)> OpAuthReply;
 
+    /// <inheritdoc cref="OpAuthReply" />
     protected void OnOpAuthReply(JObject authReply, byte[] rawData)
     {
         OpAuthReply?.Invoke(this, (authReply, rawData));
@@ -22,6 +27,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(int heartbeatReply, byte[] rawData)> OpHeartbeatReply;
 
+    /// <inheritdoc cref="OpHeartbeatReply" />
     protected void OnOpHeartbeatReply(int heartbeatReply, byte[] rawData)
     {
         OpHeartbeatReply?.Invoke(this, (heartbeatReply, rawData));
@@ -32,6 +38,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(JObject sendSmsReply, byte[] rawData)> OpSendSmsReply;
 
+    /// <inheritdoc cref="OpSendSmsReply" />
     protected void OnOpSendSmsReply(JObject sendSmsReply, byte[] rawData)
     {
         OpSendSmsReply?.Invoke(this, (sendSmsReply, rawData));
@@ -42,6 +49,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string msg, long userId, string userName, string face, JObject rawData)> DanmuMsg;
 
+    /// <inheritdoc cref="DanmuMsg" />
     protected void OnDanmuMsg(string msg, long userId, string userName, string face, JObject rawData)
     {
         DanmuMsg?.Invoke(this, (msg, userId, userName, face, rawData));
@@ -52,6 +60,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string cmd, JObject rawData)> OtherMessages;
 
+    /// <inheritdoc cref="OtherMessages" />
     protected void OnOtherMessages(string cmd, JObject rawData)
     {
         OtherMessages?.Invoke(this, (cmd, rawData));
@@ -62,6 +71,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string message, int code)> WebSocketError;
 
+    /// <inheritdoc cref="WebSocketError" />
     protected void OnWebSocketError(string message, int code)
     {
         WebSocketError?.Invoke(this, (message, code));
@@ -72,6 +82,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string message, int code)> WebSocketClose;
 
+    /// <inheritdoc cref="WebSocketClose" />
     protected void OnWebSocketClose(string message, int code)
     {
         WebSocketClose?.Invoke(this, (message, code));
@@ -82,6 +93,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string message, Exception e)> DecodeError;
 
+    /// <inheritdoc cref="DecodeError" />
     protected void OnDecodeError(string message, Exception e)
     {
         DecodeError?.Invoke(this, (message, e));
