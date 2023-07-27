@@ -13,55 +13,14 @@ using Newtonsoft.Json.Linq;
 
 namespace BLiveAPI;
 
-public class BLiveApi
+public class BLiveApi : BLiveEvents
 {
-    public delegate void BLiveEventHandler<in TEventArgs>(BLiveApi sender, TEventArgs e);
-
     private const string WsHost = "wss://broadcastlv.chat.bilibili.com/sub";
     private ClientWebSocket _clientWebSocket;
     private ulong? _roomId;
     private ulong? _uid;
     private CancellationTokenSource _webSocketCancelToken;
 
-    /// <summary>
-    ///     服务器回复的认证消息
-    /// </summary>
-    public event BLiveEventHandler<(JObject authReply, byte[] rawData)> OpAuthReply;
-
-    /// <summary>
-    ///     服务器回复的心跳消息
-    /// </summary>
-    public event BLiveEventHandler<(int heartbeatReply, byte[] rawData)> OpHeartbeatReply;
-
-    /// <summary>
-    ///     服务器发送的SMS消息
-    /// </summary>
-    public event BLiveEventHandler<(JObject sendSmsReply, byte[] rawData)> OpSendSmsReply;
-
-    /// <summary>
-    ///     弹幕消息
-    /// </summary>
-    public event BLiveEventHandler<(string msg, long userId, string userName, string face, JObject rawData)> DanmuMsg;
-
-    /// <summary>
-    ///     其他未处理的消息
-    /// </summary>
-    public event BLiveEventHandler<(string cmd, JObject rawData)> OtherMessages;
-
-    /// <summary>
-    ///     WebSocket异常关闭
-    /// </summary>
-    public event BLiveEventHandler<(string message, int code)> WebSocketError;
-
-    /// <summary>
-    ///     WebSocket主动关闭
-    /// </summary>
-    public event BLiveEventHandler<(string message, int code)> WebSocketClose;
-
-    /// <summary>
-    ///     解析消息过程出现的错误，不影响WebSocket正常运行，所以不抛出异常
-    /// </summary>
-    public event BLiveEventHandler<(string message, Exception e)> DecodeError;
 
     private static byte[] GetChildFromProtoData(byte[] protoData, int target)
     {
@@ -91,12 +50,12 @@ public class BLiveApi
                 var userName = (string)sms["info"][2]?[1];
                 var protoData = Convert.FromBase64String(sms["dm_v2"].ToString());
                 var face = Encoding.UTF8.GetString(GetChildFromProtoData(GetChildFromProtoData(protoData, 20), 4));
-                DanmuMsg?.Invoke(this, (msg, userId, userName, face, sms));
+                OnDanmuMsg(msg, userId, userName, face, sms);
                 break;
             }
             default:
             {
-                OtherMessages?.Invoke(this, (sms["cmd"].ToString(), sms));
+                OnOtherMessages(sms["cmd"].ToString(), sms);
                 break;
             }
         }
@@ -119,14 +78,14 @@ public class BLiveApi
         {
             case ServerOperation.OpAuthReply:
                 var authReply = (JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData));
-                OpAuthReply?.Invoke(this, (authReply, messageData));
+                OnOpAuthReply(authReply, messageData);
                 break;
             case ServerOperation.OpHeartbeatReply:
-                OpHeartbeatReply?.Invoke(this, (BytesToInt(messageData), messageData));
+                OnOpHeartbeatReply(BytesToInt(messageData), messageData);
                 break;
             case ServerOperation.OpSendSmsReply:
                 var sendSmsReply = (JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData));
-                OpSendSmsReply?.Invoke(this, (sendSmsReply, messageData));
+                OnOpSendSmsReply(sendSmsReply, messageData);
                 DecodeSms((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)));
                 break;
             default:
@@ -181,7 +140,7 @@ public class BLiveApi
             }
             catch (Exception e)
             {
-                DecodeError?.Invoke(this, (e.Message, e));
+                OnDecodeError(e.Message, e);
             }
             finally
             {
@@ -277,12 +236,12 @@ public class BLiveApi
         }
         catch (OperationCanceledException)
         {
-            WebSocketClose?.Invoke(this, ("WebSocket主动关闭", 0));
+            OnWebSocketClose("WebSocket主动关闭", 0);
             throw;
         }
         catch (WebSocketException)
         {
-            WebSocketError?.Invoke(this, ("WebSocket异常关闭", -1));
+            OnWebSocketError("WebSocket异常关闭", -1);
             _webSocketCancelToken?.Cancel();
             throw;
         }
