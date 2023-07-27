@@ -221,9 +221,9 @@ public class BLiveApi
 
     public async Task Connect(ulong roomId)
     {
+        if (_webSocketCancelToken is not null) throw new Exception("禁止同时运行多个Connect");
         try
         {
-            if (_webSocketCancelToken is not null) throw new Exception("禁止同时运行多个Connect");
             _webSocketCancelToken = new CancellationTokenSource();
             (_roomId, _uid) = GetRoomIdAndUid(roomId);
             if (_roomId is null || _uid is null) throw new Exception("房间号无效或网络错误");
