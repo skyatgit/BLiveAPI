@@ -247,13 +247,13 @@ public class BLiveApi : BLiveEvents
         catch (OperationCanceledException)
         {
             OnWebSocketClose("WebSocket主动关闭", 0);
-            throw;
+            throw new WebSocketCloseException();
         }
         catch (WebSocketException)
         {
             OnWebSocketError("WebSocket异常关闭", -1);
             _webSocketCancelToken?.Cancel();
-            throw;
+            throw new WebSocketErrorException();
         }
         finally
         {

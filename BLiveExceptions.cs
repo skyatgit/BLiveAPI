@@ -67,3 +67,25 @@ public class InvalidBytesLengthException : Exception
     {
     }
 }
+
+/// <summary>
+///     WebSocket主动关闭
+/// </summary>
+public class WebSocketCloseException : Exception
+{
+    /// <inheritdoc cref="WebSocketCloseException" />
+    public WebSocketCloseException() : base("WebSocket主动关闭")
+    {
+    }
+}
+
+/// <summary>
+///     WebSocket异常关闭
+/// </summary>
+public class WebSocketErrorException : Exception
+{
+    /// <inheritdoc cref="WebSocketErrorException" />
+    public WebSocketErrorException() : base("WebSocket异常关闭")
+    {
+    }
+}
