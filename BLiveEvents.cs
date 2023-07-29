@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Reflection;
 using Newtonsoft.Json.Linq;
 
 namespace BLiveAPI;
@@ -36,12 +38,40 @@ public abstract class BLiveEvents
     /// <summary>
     ///     服务器发送的SMS消息
     /// </summary>
-    public event BLiveEventHandler<(JObject sendSmsReply, byte[] rawData)> OpSendSmsReply;
+    public event BLiveEventHandler<(string cmd, string hitCmd, JObject rawData)> OpSendSmsReply;
 
     /// <inheritdoc cref="OpSendSmsReply" />
-    protected void OnOpSendSmsReply(JObject sendSmsReply, byte[] rawData)
+    protected void OnOpSendSmsReply(string cmd, JObject rawData)
     {
-        OpSendSmsReply?.Invoke(this, (sendSmsReply, rawData));
+        var waitInvokeList = OpSendSmsReply?.GetInvocationList().ToList();
+        var hit = false;
+        foreach (var invocation in OpSendSmsReply?.GetInvocationList()!)
+        {
+            var targetCmdAttribute = invocation.Method.GetCustomAttributes<TargetCmdAttribute>().FirstOrDefault();
+            if (targetCmdAttribute is null)
+            {
+                invocation.DynamicInvoke(this, (cmd, "ALL", rawData));
+                waitInvokeList?.Remove(invocation);
+            }
+            else if (targetCmdAttribute.HasCmd(cmd))
+            {
+                invocation.DynamicInvoke(this, (cmd, cmd, rawData));
+                waitInvokeList?.Remove(invocation);
+                hit = true;
+            }
+            else if (targetCmdAttribute.HasCmd("ALL"))
+            {
+                invocation.DynamicInvoke(this, (cmd, "ALL", rawData));
+                waitInvokeList?.Remove(invocation);
+            }
+            else if (!targetCmdAttribute.HasCmd("OTHERS"))
+            {
+                waitInvokeList?.Remove(invocation);
+            }
+        }
+
+        if (hit) return;
+        foreach (var invocation in waitInvokeList!) invocation.DynamicInvoke(this, (cmd, "OTHERS", rawData));
     }
 
     /// <summary>

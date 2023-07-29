@@ -44,6 +44,7 @@ public class BLiveApi : BLiveEvents
     private void DecodeSms(JObject sms)
     {
         var cmd = (string)sms.GetValue("cmd");
+        OnOpSendSmsReply(cmd, sms);
         switch (cmd)
         {
             case "DANMU_MSG":
@@ -58,7 +59,7 @@ public class BLiveApi : BLiveEvents
             }
             default:
             {
-                OnOtherMessages(sms["cmd"].ToString(), sms);
+                OnOtherMessages(cmd, sms);
                 break;
             }
         }
@@ -80,15 +81,12 @@ public class BLiveApi : BLiveEvents
         switch (operation)
         {
             case ServerOperation.OpAuthReply:
-                var authReply = (JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData));
-                OnOpAuthReply(authReply, messageData);
+                OnOpAuthReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)), messageData);
                 break;
             case ServerOperation.OpHeartbeatReply:
                 OnOpHeartbeatReply(BytesToInt(messageData), messageData);
                 break;
             case ServerOperation.OpSendSmsReply:
-                var sendSmsReply = (JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData));
-                OnOpSendSmsReply(sendSmsReply, messageData);
                 DecodeSms((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)));
                 break;
             default:

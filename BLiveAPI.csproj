@@ -150,6 +150,7 @@
         <Compile Include="BLiveEvents.cs"/>
         <Compile Include="BLiveExceptions.cs"/>
         <Compile Include="Properties\AssemblyInfo.cs"/>
+        <Compile Include="TargetCmdAttribute.cs"/>
     </ItemGroup>
     <ItemGroup>
         <None Include="packages.config"/>
