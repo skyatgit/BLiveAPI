@@ -18,7 +18,7 @@ public abstract class BLiveEvents
     /// <inheritdoc cref="BLiveEvents" />
     protected BLiveEvents()
     {
-        OpSendSmsReply += OnDanmuMsg;
+        SendSmsReply += OnDanmuMsg;
     }
 
     /// <summary>
@@ -48,8 +48,7 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string cmd, string hitCmd, JObject rawData)> OpSendSmsReply;
 
-    /// <inheritdoc cref="OpSendSmsReply" />
-    protected void OnOpSendSmsReply(JObject rawData)
+    private void InvokeOpSendSmsReply(JObject rawData)
     {
         var waitInvokeList = OpSendSmsReply?.GetInvocationList().ToList();
         var hit = false;
@@ -66,7 +65,7 @@ public abstract class BLiveEvents
             {
                 invocation.DynamicInvoke(this, (cmd, cmd, rawData));
                 waitInvokeList?.Remove(invocation);
-                hit = !targetCmdAttribute.HasCmd("IGNORE_HIT") || hit;
+                hit = true;
             }
             else if (targetCmdAttribute.HasCmd("ALL"))
             {
@@ -81,6 +80,25 @@ public abstract class BLiveEvents
 
         if (hit) return;
         foreach (var invocation in waitInvokeList!) invocation.DynamicInvoke(this, (cmd, "OTHERS", rawData));
+    }
+
+    private event BLiveSmsEventHandler SendSmsReply;
+
+    private void InvokeSendSmsReply(JObject rawData)
+    {
+        var cmd = (string)rawData["cmd"];
+        foreach (var invocation in SendSmsReply?.GetInvocationList()!)
+        {
+            var targetCmdAttribute = invocation.Method.GetCustomAttributes<TargetCmdAttribute>().FirstOrDefault();
+            if (targetCmdAttribute!.HasCmd(cmd)) invocation.DynamicInvoke(rawData);
+        }
+    }
+
+    /// <inheritdoc cref="OpSendSmsReply" />
+    protected void OnOpSendSmsReply(JObject rawData)
+    {
+        InvokeSendSmsReply(rawData);
+        InvokeOpSendSmsReply(rawData);
     }
 
     /// <summary>
@@ -105,17 +123,16 @@ public abstract class BLiveEvents
     }
 
     /// <inheritdoc cref="DanmuMsg" />
-    [TargetCmd("DANMU_MSG", "IGNORE_HIT")]
-    private void OnDanmuMsg(object sender, (string cmd, string hitCmd, JObject rawData) e)
+    [TargetCmd("DANMU_MSG")]
+    private void OnDanmuMsg(JObject rawData)
     {
-        var msg = (string)e.rawData["info"][1];
-        var userId = (long)e.rawData["info"][2]?[0];
-        var userName = (string)e.rawData["info"][2]?[1];
-        var protoData = Convert.FromBase64String(e.rawData["dm_v2"].ToString());
+        var msg = (string)rawData["info"][1];
+        var userId = (long)rawData["info"][2]?[0];
+        var userName = (string)rawData["info"][2]?[1];
+        var protoData = Convert.FromBase64String(rawData["dm_v2"].ToString());
         var face = Encoding.UTF8.GetString(GetChildFromProtoData(GetChildFromProtoData(protoData, 20), 4));
-        DanmuMsg?.Invoke(this, (msg, userId, userName, face, e.rawData));
+        DanmuMsg?.Invoke(this, (msg, userId, userName, face, rawData));
     }
-
 
     /// <summary>
     ///     WebSocket异常关闭
@@ -149,4 +166,6 @@ public abstract class BLiveEvents
     {
         DecodeError?.Invoke(this, (message, e));
     }
+
+    private delegate void BLiveSmsEventHandler(JObject rawData);
 }
