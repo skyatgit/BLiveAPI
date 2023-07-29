@@ -48,10 +48,9 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string cmd, string hitCmd, JObject rawData)> OpSendSmsReply;
 
-    private void InvokeOpSendSmsReply(JObject rawData)
+    private void InvokeOpSendSmsReply(JObject rawData, bool hit)
     {
         var waitInvokeList = OpSendSmsReply?.GetInvocationList().ToList();
-        var hit = false;
         var cmd = (string)rawData["cmd"];
         foreach (var invocation in OpSendSmsReply?.GetInvocationList()!)
         {
@@ -84,21 +83,19 @@ public abstract class BLiveEvents
 
     private event BLiveSmsEventHandler SendSmsReply;
 
-    private void InvokeSendSmsReply(JObject rawData)
+    private bool InvokeSendSmsReply(JObject rawData)
     {
         var cmd = (string)rawData["cmd"];
-        foreach (var invocation in SendSmsReply?.GetInvocationList()!)
-        {
-            var targetCmdAttribute = invocation.Method.GetCustomAttributes<TargetCmdAttribute>().FirstOrDefault();
-            if (targetCmdAttribute!.HasCmd(cmd)) invocation.DynamicInvoke(rawData);
-        }
+        return (from invocation in SendSmsReply?.GetInvocationList()!
+            let targetCmdAttribute = invocation.Method.GetCustomAttributes<TargetCmdAttribute>().FirstOrDefault()
+            where targetCmdAttribute!.HasCmd(cmd)
+            select invocation).Aggregate(false, (current, invocation) => (bool)invocation.DynamicInvoke(rawData) || current);
     }
 
     /// <inheritdoc cref="OpSendSmsReply" />
     protected void OnOpSendSmsReply(JObject rawData)
     {
-        InvokeSendSmsReply(rawData);
-        InvokeOpSendSmsReply(rawData);
+        InvokeOpSendSmsReply(rawData, InvokeSendSmsReply(rawData));
     }
 
     /// <summary>
@@ -124,7 +121,7 @@ public abstract class BLiveEvents
 
     /// <inheritdoc cref="DanmuMsg" />
     [TargetCmd("DANMU_MSG")]
-    private void OnDanmuMsg(JObject rawData)
+    private bool OnDanmuMsg(JObject rawData)
     {
         var msg = (string)rawData["info"][1];
         var userId = (long)rawData["info"][2]?[0];
@@ -132,6 +129,7 @@ public abstract class BLiveEvents
         var protoData = Convert.FromBase64String(rawData["dm_v2"].ToString());
         var face = Encoding.UTF8.GetString(GetChildFromProtoData(GetChildFromProtoData(protoData, 20), 4));
         DanmuMsg?.Invoke(this, (msg, userId, userName, face, rawData));
+        return DanmuMsg is not null;
     }
 
     /// <summary>
@@ -167,5 +165,5 @@ public abstract class BLiveEvents
         DecodeError?.Invoke(this, (message, e));
     }
 
-    private delegate void BLiveSmsEventHandler(JObject rawData);
+    private delegate bool BLiveSmsEventHandler(JObject rawData);
 }
