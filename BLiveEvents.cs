@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using Google.Protobuf;
 using Newtonsoft.Json.Linq;
 
 namespace BLiveAPI;
@@ -12,6 +14,12 @@ public abstract class BLiveEvents
 {
     /// <inheritdoc />
     public delegate void BLiveEventHandler<in TEventArgs>(object sender, TEventArgs e);
+
+    /// <inheritdoc cref="BLiveEvents" />
+    protected BLiveEvents()
+    {
+        OpSendSmsReply += OnDanmuMsg;
+    }
 
     /// <summary>
     ///     服务器回复的认证消息
@@ -41,10 +49,11 @@ public abstract class BLiveEvents
     public event BLiveEventHandler<(string cmd, string hitCmd, JObject rawData)> OpSendSmsReply;
 
     /// <inheritdoc cref="OpSendSmsReply" />
-    protected void OnOpSendSmsReply(string cmd, JObject rawData)
+    protected void OnOpSendSmsReply(JObject rawData)
     {
         var waitInvokeList = OpSendSmsReply?.GetInvocationList().ToList();
         var hit = false;
+        var cmd = (string)rawData["cmd"];
         foreach (var invocation in OpSendSmsReply?.GetInvocationList()!)
         {
             var targetCmdAttribute = invocation.Method.GetCustomAttributes<TargetCmdAttribute>().FirstOrDefault();
@@ -57,7 +66,7 @@ public abstract class BLiveEvents
             {
                 invocation.DynamicInvoke(this, (cmd, cmd, rawData));
                 waitInvokeList?.Remove(invocation);
-                hit = true;
+                hit = !targetCmdAttribute.HasCmd("IGNORE_HIT") || hit;
             }
             else if (targetCmdAttribute.HasCmd("ALL"))
             {
@@ -79,22 +88,34 @@ public abstract class BLiveEvents
     /// </summary>
     public event BLiveEventHandler<(string msg, long userId, string userName, string face, JObject rawData)> DanmuMsg;
 
+    private static byte[] GetChildFromProtoData(byte[] protoData, int target)
+    {
+        using (var input = new CodedInputStream(protoData))
+        {
+            while (!input.IsAtEnd)
+            {
+                var tag = input.ReadTag();
+                var tagId = WireFormat.GetTagFieldNumber(tag);
+                if (tagId == target) return input.ReadBytes().ToByteArray();
+                input.SkipLastField();
+            }
+        }
+
+        return Array.Empty<byte>();
+    }
+
     /// <inheritdoc cref="DanmuMsg" />
-    protected void OnDanmuMsg(string msg, long userId, string userName, string face, JObject rawData)
+    [TargetCmd("DANMU_MSG", "IGNORE_HIT")]
+    private void OnDanmuMsg(object sender, (string cmd, string hitCmd, JObject rawData) e)
     {
-        DanmuMsg?.Invoke(this, (msg, userId, userName, face, rawData));
+        var msg = (string)e.rawData["info"][1];
+        var userId = (long)e.rawData["info"][2]?[0];
+        var userName = (string)e.rawData["info"][2]?[1];
+        var protoData = Convert.FromBase64String(e.rawData["dm_v2"].ToString());
+        var face = Encoding.UTF8.GetString(GetChildFromProtoData(GetChildFromProtoData(protoData, 20), 4));
+        DanmuMsg?.Invoke(this, (msg, userId, userName, face, e.rawData));
     }
 
-    /// <summary>
-    ///     其他未处理的消息
-    /// </summary>
-    public event BLiveEventHandler<(string cmd, JObject rawData)> OtherMessages;
-
-    /// <inheritdoc cref="OtherMessages" />
-    protected void OnOtherMessages(string cmd, JObject rawData)
-    {
-        OtherMessages?.Invoke(this, (cmd, rawData));
-    }
 
     /// <summary>
     ///     WebSocket异常关闭

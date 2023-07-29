@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BrotliSharpLib;
-using Google.Protobuf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -24,46 +23,6 @@ public class BLiveApi : BLiveEvents
     private ulong? _uid;
     private CancellationTokenSource _webSocketCancelToken;
 
-
-    private static byte[] GetChildFromProtoData(byte[] protoData, int target)
-    {
-        using (var input = new CodedInputStream(protoData))
-        {
-            while (!input.IsAtEnd)
-            {
-                var tag = input.ReadTag();
-                var tagId = WireFormat.GetTagFieldNumber(tag);
-                if (tagId == target) return input.ReadBytes().ToByteArray();
-                input.SkipLastField();
-            }
-        }
-
-        return Array.Empty<byte>();
-    }
-
-    private void DecodeSms(JObject sms)
-    {
-        var cmd = (string)sms.GetValue("cmd");
-        OnOpSendSmsReply(cmd, sms);
-        switch (cmd)
-        {
-            case "DANMU_MSG":
-            {
-                var msg = (string)sms["info"][1];
-                var userId = (long)sms["info"][2]?[0];
-                var userName = (string)sms["info"][2]?[1];
-                var protoData = Convert.FromBase64String(sms["dm_v2"].ToString());
-                var face = Encoding.UTF8.GetString(GetChildFromProtoData(GetChildFromProtoData(protoData, 20), 4));
-                OnDanmuMsg(msg, userId, userName, face, sms);
-                break;
-            }
-            default:
-            {
-                OnOtherMessages(cmd, sms);
-                break;
-            }
-        }
-    }
 
     private static int BytesToInt(byte[] bytes)
     {
@@ -87,7 +46,7 @@ public class BLiveApi : BLiveEvents
                 OnOpHeartbeatReply(BytesToInt(messageData), messageData);
                 break;
             case ServerOperation.OpSendSmsReply:
-                DecodeSms((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)));
+                OnOpSendSmsReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)));
                 break;
             default:
                 throw new UnknownServerOperationException(operation);
