@@ -13,7 +13,7 @@ private void OpAuthReplyEvent(object sender, (JObject authReply, byte[] rawData)
 private void OpHeartbeatReplyEvent(object sender, (int heartbeatReply, byte[] rawData) e)
 {
 }
-//用于接收主动关闭消息的方法(主动调用api.Close()),同时会触发异常
+//用于接收主动关闭消息的方法(使用者主动调用api.Close()时),同时会触发异常
 private void WebSocketCloseEvent(object sender, (string message, int code) e)
 {
 }
@@ -21,7 +21,7 @@ private void WebSocketCloseEvent(object sender, (string message, int code) e)
 private void WebSocketErrorEvent(object sender, (string message, int code) e)
 {
 }
-//用于接收API内部解码错误,一般情况下不会触发,触发B站改逻辑或其他特殊情况,此消息触发时不会引起异常
+//用于接收API内部解码错误,一般情况下不会触发,除非B站改逻辑或其他特殊情况,此消息触发时不会引起异常
 private void DecodeErrorEvent(object sender, (string message, Exception e) e)
 {
 }
@@ -71,5 +71,15 @@ catch (Exception e)
 }
 //可以通过Close方法主动关闭WebSocket连接
 api.Close();
+
+//可能出现的异常
+ConnectAlreadyRunningException//Connect后没有主动或被动结束,一个api对象同时只能连接到一个房间
+InvalidRoomIdException//输入的roomId有误,大概率是B站没有这个房间号对应的直播间
+UnknownServerOperationException//未知的消息类型,正常情况下不会出现,可在DecodeError事件中接收到
+UnknownVersionException//未知的压缩类型,正常情况下不会出现,可在DecodeError事件中接收到
+NetworkException//网络错误,一般会在连接房间但本机无网络的情况下出现
+InvalidBytesLengthException//API内部解码过程中出现的问题,正常情况下不会出现,可在DecodeError事件中接收到
+WebSocketCloseException//使用者主动关闭了该房间的连接
+WebSocketErrorException//被动关闭了该房间的连接,一般出现在正常连接后突然断网一段时间的情况下
 ```
 
