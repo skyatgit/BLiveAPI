@@ -50,45 +50,47 @@ public abstract class BLiveEvents
 
     private void InvokeOpSendSmsReply(JObject rawData, bool hit)
     {
-        var waitInvokeList = OpSendSmsReply?.GetInvocationList().ToList();
+        if (OpSendSmsReply is null) return;
+        var waitInvokeList = OpSendSmsReply.GetInvocationList().ToList();
         var cmd = (string)rawData["cmd"];
-        foreach (var invocation in OpSendSmsReply?.GetInvocationList()!)
+        foreach (var invocation in OpSendSmsReply.GetInvocationList())
         {
             var targetCmdAttribute = invocation.Method.GetCustomAttributes<TargetCmdAttribute>().FirstOrDefault();
             if (targetCmdAttribute is null)
             {
                 invocation.DynamicInvoke(this, (cmd, "ALL", rawData));
-                waitInvokeList?.Remove(invocation);
+                waitInvokeList.Remove(invocation);
             }
             else if (targetCmdAttribute.HasCmd(cmd))
             {
                 invocation.DynamicInvoke(this, (cmd, cmd, rawData));
-                waitInvokeList?.Remove(invocation);
+                waitInvokeList.Remove(invocation);
                 hit = true;
             }
             else if (targetCmdAttribute.HasCmd("ALL"))
             {
                 invocation.DynamicInvoke(this, (cmd, "ALL", rawData));
-                waitInvokeList?.Remove(invocation);
+                waitInvokeList.Remove(invocation);
             }
             else if (!targetCmdAttribute.HasCmd("OTHERS"))
             {
-                waitInvokeList?.Remove(invocation);
+                waitInvokeList.Remove(invocation);
             }
         }
 
         if (hit) return;
-        foreach (var invocation in waitInvokeList!) invocation.DynamicInvoke(this, (cmd, "OTHERS", rawData));
+        foreach (var invocation in waitInvokeList) invocation.DynamicInvoke(this, (cmd, "OTHERS", rawData));
     }
 
     private event BLiveSmsEventHandler SendSmsReply;
 
     private bool InvokeSendSmsReply(JObject rawData)
     {
+        if (SendSmsReply is null) return false;
         var cmd = (string)rawData["cmd"];
-        return (from invocation in SendSmsReply?.GetInvocationList()!
+        return (from invocation in SendSmsReply.GetInvocationList()
             let targetCmdAttribute = invocation.Method.GetCustomAttributes<TargetCmdAttribute>().FirstOrDefault()
-            where targetCmdAttribute!.HasCmd(cmd)
+            where targetCmdAttribute != null && targetCmdAttribute.HasCmd(cmd)
             select invocation).Aggregate(false, (current, invocation) => (bool)invocation.DynamicInvoke(rawData) || current);
     }
 

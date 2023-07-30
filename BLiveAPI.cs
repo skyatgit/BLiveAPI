@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Net.WebSockets;
@@ -74,6 +76,16 @@ public class BLiveApi : BLiveEvents
                     }
 
                     break;
+                case 2:
+                    using (var resultStream = new MemoryStream())
+                    using (var packetStream = new MemoryStream(packetData))
+                    using (var deflateStream = new DeflateStream(packetStream, CompressionMode.Decompress))
+                    {
+                        deflateStream.CopyTo(resultStream);
+                        packetData = resultStream.ToArray();
+                        continue;
+                    }
+
                 case 3:
                     packetData = Brotli.DecompressBuffer(body, 0, body.Length);
                     continue;
@@ -186,7 +198,8 @@ public class BLiveApi : BLiveEvents
     ///     连接指定的直播间
     /// </summary>
     /// <param name="roomId">直播间id,可以是短位id</param>
-    public async Task Connect(ulong roomId)
+    /// <param name="protoVer">压缩类型2:zlib,3:brotli</param>
+    public async Task Connect(ulong roomId, int protoVer = 3)
     {
         if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();
         try
@@ -194,7 +207,7 @@ public class BLiveApi : BLiveEvents
             _webSocketCancelToken = new CancellationTokenSource();
             (_roomId, _uid) = GetRoomIdAndUid(roomId);
             _clientWebSocket = new ClientWebSocket();
-            var authBody = new { uid = _uid, roomid = _roomId, protover = 3, platform = "web", type = 2 };
+            var authBody = new { uid = _uid, roomid = _roomId, protover = protoVer, platform = "web", type = 2 };
             var authPacket = CreateWsPacket(ClientOperation.OpAuth, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(authBody)));
             var heartPacket = CreateWsPacket(ClientOperation.OpHeartbeat, Array.Empty<byte>());
             await _clientWebSocket.ConnectAsync(new Uri(WsHost), _webSocketCancelToken.Token);
