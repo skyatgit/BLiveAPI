@@ -78,7 +78,7 @@ public class BLiveApi : BLiveEvents
                     break;
                 case 2:
                     using (var resultStream = new MemoryStream())
-                    using (var packetStream = new MemoryStream(packetData))
+                    using (var packetStream = new MemoryStream(body, 2, body.Length - 2))
                     using (var deflateStream = new DeflateStream(packetStream, CompressionMode.Decompress))
                     {
                         deflateStream.CopyTo(resultStream);
