@@ -113,6 +113,8 @@ public class BLiveApi : BLiveEvents
             catch (Exception e)
             {
                 OnDecodeError(e.Message, e);
+                _webSocketCancelToken?.Cancel();
+                throw;
             }
             finally
             {

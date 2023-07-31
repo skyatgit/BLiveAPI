@@ -22,6 +22,10 @@ private void WebSocketErrorEvent(object sender, (string message, int code) e)
 {
 }
 //用于接收API内部解码错误,一般情况下不会触发,除非B站改逻辑或其他特殊情况,此消息触发时不会引起异常
+//目前发现在不同的C#版本引入库时会出现不同的问题，所以暂时将此异常抛出并终止与直播间的连接
+//Unity使用本库时Brotli库不可用
+//.NET项目使用本库时需要自己安装 Newtonsoft.Json
+//.NET Framework项目使用本库时需要手动引用同一文件夹下的Memory库和Unsafe库
 private void DecodeErrorEvent(object sender, (string message, Exception e) e)
 {
 }

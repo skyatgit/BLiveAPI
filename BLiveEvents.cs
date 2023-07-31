@@ -157,7 +157,7 @@ public abstract class BLiveEvents
     }
 
     /// <summary>
-    ///     解析消息过程出现的错误，不影响WebSocket正常运行，所以不抛出异常
+    ///     解析消息过程出现的错误，不影响WebSocket正常运行，所以不抛出异常(当前版本暂时会抛出)
     /// </summary>
     public event BLiveEventHandler<(string message, Exception e)> DecodeError;
 
