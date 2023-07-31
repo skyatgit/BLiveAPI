@@ -25,6 +25,17 @@ public class InvalidRoomIdException : Exception
 }
 
 /// <summary>
+///     protoVer无效,只能是2或3
+/// </summary>
+public class InvalidProtoVerException : Exception
+{
+    /// <inheritdoc cref="InvalidProtoVerException" />
+    public InvalidProtoVerException() : base("protoVer无效,只能是2或3")
+    {
+    }
+}
+
+/// <summary>
 ///     未知的ServerOperation异常
 /// </summary>
 public class UnknownServerOperationException : Exception

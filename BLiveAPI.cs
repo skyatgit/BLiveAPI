@@ -202,6 +202,7 @@ public class BLiveApi : BLiveEvents
     public async Task Connect(ulong roomId, int protoVer = 3)
     {
         if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();
+        if (protoVer is not (2 or 3)) throw new InvalidProtoVerException();
         try
         {
             _webSocketCancelToken = new CancellationTokenSource();

@@ -63,7 +63,10 @@ api.OpSendSmsReply += OtherMessagesEvent;
 //连接到某个直播间,Connect内有可能会抛出一些回事WebSocket断开连接的异常,需要监听并处理
 try
 {
-    await api.Connect(1234);
+//Connect的第一个参数代表房间号，支持短位房间号
+//第二个参数代表数据压缩协议的版本，只支持输入2或3,2代表zlib方式，3代表brotli方式
+//因为使用的Brotli库会在unity中报错的原因,建议在unity中使用时填入2
+    await api.Connect(1234,3);
 }
 catch (Exception e)
 {
@@ -81,5 +84,6 @@ NetworkException//网络错误,一般会在连接房间但本机无网络的情�
 InvalidBytesLengthException//API内部解码过程中出现的问题,正常情况下不会出现,可在DecodeError事件中接收到
 WebSocketCloseException//使用者主动关闭了该房间的连接
 WebSocketErrorException//被动关闭了该房间的连接,一般出现在正常连接后突然断网一段时间的情况下
+InvalidProtoVerException//输入的protoVer有误,只能是2或3
 ```
 
