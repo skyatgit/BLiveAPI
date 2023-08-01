@@ -27,5 +27,5 @@ jobs:
       - name: Upload Release
         uses: actions/upload-artifact@v3
         with:
-          name: Release
-          path: bin/Release
+          name: BLiveAPI
+          path: bin
