@@ -2,6 +2,8 @@
 
 B站直播间弹幕野生接口。
 
+[![](https://github.com/skyatgit/BLiveAPI/actions/workflows/build.yml/badge.svg)](https://github.com/skyatgit/BLiveAPI/actions/workflows/build.yml)
+
 ```c#
 //创建一个BLiveApi对象
 var api = new BLiveApi();
