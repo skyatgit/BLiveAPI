@@ -19,6 +19,7 @@ public abstract class BLiveEvents
     protected BLiveEvents()
     {
         SendSmsReply += OnDanmuMsg;
+        SendSmsReply += OnInteractWord;
     }
 
     /// <summary>
@@ -103,7 +104,7 @@ public abstract class BLiveEvents
     /// <summary>
     ///     弹幕消息
     /// </summary>
-    public event BLiveEventHandler<(string msg, long userId, string userName, string face, JObject rawData)> DanmuMsg;
+    public event BLiveEventHandler<(string msg, ulong userId, string userName, string face, JObject rawData)> DanmuMsg;
 
     private static byte[] GetChildFromProtoData(byte[] protoData, int target)
     {
@@ -121,17 +122,31 @@ public abstract class BLiveEvents
         return Array.Empty<byte>();
     }
 
-    /// <inheritdoc cref="DanmuMsg" />
     [TargetCmd("DANMU_MSG")]
     private bool OnDanmuMsg(JObject rawData)
     {
         var msg = (string)rawData["info"][1];
-        var userId = (long)rawData["info"][2]?[0];
+        var userId = (ulong)rawData["info"][2]?[0];
         var userName = (string)rawData["info"][2]?[1];
         var protoData = Convert.FromBase64String(rawData["dm_v2"].ToString());
         var face = Encoding.UTF8.GetString(GetChildFromProtoData(GetChildFromProtoData(protoData, 20), 4));
         DanmuMsg?.Invoke(this, (msg, userId, userName, face, rawData));
         return DanmuMsg is not null;
+    }
+
+    /// <summary>
+    ///     观众进房消息,privilegeType 0:普通观众 1:总督 2:提督 3:舰长
+    /// </summary>
+    public event BLiveEventHandler<(int privilegeType, ulong userId, string userName, JObject rawData)> InteractWord;
+
+    [TargetCmd("INTERACT_WORD")]
+    private bool OnInteractWord(JObject rawData)
+    {
+        var privilegeType = (int)rawData["data"]["privilege_type"];
+        var userId = (ulong)rawData["data"]["uid"];
+        var userName = (string)rawData["data"]["uname"];
+        InteractWord?.Invoke(this, (privilegeType, userId, userName, rawData));
+        return InteractWord is not null;
     }
 
     /// <summary>

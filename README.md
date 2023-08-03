@@ -33,7 +33,7 @@ private void DecodeErrorEvent(object sender, (string message, Exception e) e)
 }
 //用于接收API内部提供的一个简单处理过后的弹幕消息的方法
 //此方法订阅DanmuMsg事件时会和使用者创建并绑定了携带[TargetCmd("DANMU_MSG")]的方法一样屏蔽掉携带OTHERS的方法(可看下面的示例)
-private void DanmuMsgEvent(object sender, (string msg, long userId, string userName, string face, JObject rawData) e)
+private void DanmuMsgEvent(object sender, (string msg, ulong userId, string userName, string face, JObject rawData) e)
 {
 }
 //当方法与OpSendSmsReply绑定时需要使用[TargetCmd("cmd1","cmd2"...)]设置方法想要接收的命令,建议每个方法只设置1个命令
