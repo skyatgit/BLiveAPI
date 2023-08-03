@@ -20,6 +20,7 @@ public abstract class BLiveEvents
     {
         SendSmsReply += OnDanmuMsg;
         SendSmsReply += OnInteractWord;
+        SendSmsReply += OnSendGift;
     }
 
     /// <summary>
@@ -147,6 +148,32 @@ public abstract class BLiveEvents
         var userName = (string)rawData["data"]["uname"];
         InteractWord?.Invoke(this, (privilegeType, userId, userName, rawData));
         return InteractWord is not null;
+    }
+
+    /// <summary>
+    ///     投喂礼物事件
+    /// </summary>
+    public event BLiveEventHandler<( JObject giftInfo, JObject blindInfo, ulong userId, string userName, JObject rawData)> SendGift;
+
+    [TargetCmd("SEND_GIFT")]
+    private bool OnSendGift(JObject rawData)
+    {
+        var data = rawData["data"];
+        var blind = data["blind_gift"];
+        var userId = (ulong)data["uid"];
+        var userName = (string)data["uname"];
+        var giftInfo = JObject.FromObject(new { action = data["action"], giftId = data["giftId"], giftName = data["giftName"], price = data["price"] });
+        var blindInfo = blind?.Type is JTokenType.Null
+            ? null
+            : JObject.FromObject(new
+            {
+                action = blind?.SelectToken("gift_action"),
+                giftId = blind?.SelectToken("original_gift_id"),
+                giftName = blind?.SelectToken("original_gift_name"),
+                price = blind?.SelectToken("original_gift_price")
+            });
+        SendGift?.Invoke(this, (giftInfo, blindInfo, userId, userName, rawData));
+        return SendGift is not null;
     }
 
     /// <summary>
