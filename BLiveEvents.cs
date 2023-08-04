@@ -151,9 +151,9 @@ public abstract class BLiveEvents
     }
 
     /// <summary>
-    ///     投喂礼物事件
+    ///     投喂礼物事件 giftInfo:礼物信息 blindInfo:盲盒礼物信息,如果此礼物不是盲盒爆出则为null coinType:区别是金瓜子礼物还是银瓜子礼物
     /// </summary>
-    public event BLiveEventHandler<( JObject giftInfo, JObject blindInfo, ulong userId, string userName, JObject rawData)> SendGift;
+    public event BLiveEventHandler<( JObject giftInfo, JObject blindInfo, string coinType, ulong userId, string userName, string face, JObject rawData)> SendGift;
 
     [TargetCmd("SEND_GIFT")]
     private bool OnSendGift(JObject rawData)
@@ -162,6 +162,8 @@ public abstract class BLiveEvents
         var blind = data["blind_gift"];
         var userId = (ulong)data["uid"];
         var userName = (string)data["uname"];
+        var face = (string)data["face"];
+        var coinType = (string)data["coin_type"];
         var giftInfo = JObject.FromObject(new { action = data["action"], giftId = data["giftId"], giftName = data["giftName"], price = data["price"] });
         var blindInfo = blind?.Type is JTokenType.Null
             ? null
@@ -172,7 +174,7 @@ public abstract class BLiveEvents
                 giftName = blind?.SelectToken("original_gift_name"),
                 price = blind?.SelectToken("original_gift_price")
             });
-        SendGift?.Invoke(this, (giftInfo, blindInfo, userId, userName, rawData));
+        SendGift?.Invoke(this, (giftInfo, blindInfo, coinType, userId, userName, face, rawData));
         return SendGift is not null;
     }
 
