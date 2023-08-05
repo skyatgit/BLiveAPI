@@ -21,6 +21,7 @@ public abstract class BLiveEvents
         SendSmsReply += OnDanmuMsg;
         SendSmsReply += OnInteractWord;
         SendSmsReply += OnSendGift;
+        SendSmsReply += OnSuperChatMessage;
     }
 
     /// <summary>
@@ -176,6 +177,24 @@ public abstract class BLiveEvents
             });
         SendGift?.Invoke(this, (giftInfo, blindInfo, coinType, userId, userName, face, rawData));
         return SendGift is not null;
+    }
+
+    /// <summary>
+    ///     SC消息事件
+    /// </summary>
+    public event BLiveEventHandler<(string message, ulong id, int price, ulong userId, string userName, string face, JObject rawData)> SuperChatMessage;
+
+    [TargetCmd("SUPER_CHAT_MESSAGE")]
+    private bool OnSuperChatMessage(JObject rawData)
+    {
+        var message = (string)rawData["data"]["message"];
+        var price = (int)rawData["data"]["price"];
+        var id = (ulong)rawData["data"]["id"];
+        var userId = (ulong)rawData["data"]["uid"];
+        var face = (string)rawData["data"]["user_info"]?["face"];
+        var userName = (string)rawData["data"]["user_info"]?["uname"];
+        SuperChatMessage?.Invoke(this, (message, id, price, userId, userName, face, rawData));
+        return SuperChatMessage is not null;
     }
 
     /// <summary>
