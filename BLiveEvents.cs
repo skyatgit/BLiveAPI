@@ -22,6 +22,7 @@ public abstract class BLiveEvents
         SendSmsReply += OnInteractWord;
         SendSmsReply += OnSendGift;
         SendSmsReply += OnSuperChatMessage;
+        SendSmsReply += OnUserToastMsg;
     }
 
     /// <summary>
@@ -195,6 +196,26 @@ public abstract class BLiveEvents
         var userName = (string)rawData["data"]["user_info"]?["uname"];
         SuperChatMessage?.Invoke(this, (message, id, price, userId, userName, face, rawData));
         return SuperChatMessage is not null;
+    }
+
+    /// <summary>
+    ///     上舰消息事件 price的单位是金瓜子
+    /// </summary>
+    public event BLiveEventHandler<(string roleName, int giftId, int guardLevel, int price, int num, string unit, ulong userId, string userName, JObject rawData)> UserToastMsg;
+
+    [TargetCmd("USER_TOAST_MSG")]
+    private bool OnUserToastMsg(JObject rawData)
+    {
+        var roleName = (string)rawData["data"]["role_name"];
+        var giftId = (int)rawData["data"]["gift_id"];
+        var guardLevel = (int)rawData["data"]["guard_level"];
+        var price = (int)rawData["data"]["price"];
+        var num = (int)rawData["data"]["num"];
+        var unit = (string)rawData["data"]["unit"];
+        var userId = (ulong)rawData["data"]["uid"];
+        var userName = (string)rawData["data"]["username"];
+        UserToastMsg?.Invoke(this, (roleName, giftId, guardLevel, price, num, unit, userId, userName, rawData));
+        return UserToastMsg is not null;
     }
 
     /// <summary>
