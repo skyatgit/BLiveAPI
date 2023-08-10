@@ -28,12 +28,12 @@ public abstract class BLiveEvents
     /// <summary>
     ///     服务器回复的认证消息
     /// </summary>
-    public event BLiveEventHandler<(JObject authReply, byte[] rawData)> OpAuthReply;
+    public event BLiveEventHandler<(JObject authReply, ulong? roomId, byte[] rawData)> OpAuthReply;
 
     /// <inheritdoc cref="OpAuthReply" />
-    protected void OnOpAuthReply(JObject authReply, byte[] rawData)
+    protected void OnOpAuthReply(JObject authReply, ulong? roomId, byte[] rawData)
     {
-        OpAuthReply?.Invoke(this, (authReply, rawData));
+        OpAuthReply?.Invoke(this, (authReply, roomId, rawData));
     }
 
     /// <summary>

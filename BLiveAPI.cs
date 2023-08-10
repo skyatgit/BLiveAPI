@@ -42,7 +42,7 @@ public class BLiveApi : BLiveEvents
         switch (operation)
         {
             case ServerOperation.OpAuthReply:
-                OnOpAuthReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)), messageData);
+                OnOpAuthReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)), _roomId, messageData);
                 break;
             case ServerOperation.OpHeartbeatReply:
                 OnOpHeartbeatReply(BytesToInt(messageData), messageData);
