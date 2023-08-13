@@ -186,6 +186,12 @@ public class BLiveApi : BLiveEvents
         }
     }
 
+    private static string GetBuVid()
+    {
+        var result = new HttpClient().GetAsync("https://data.bilibili.com/v/").Result;
+        return result.Headers.GetValues("Set-Cookie").First().Split(';').First().Split('=').Last();
+    }
+
     /// <summary>
     ///     关闭当前对象中的WebSocket
     /// </summary>
@@ -210,7 +216,7 @@ public class BLiveApi : BLiveEvents
             _webSocketCancelToken = new CancellationTokenSource();
             (_roomId, _uid) = GetRoomIdAndUid(roomId);
             _clientWebSocket = new ClientWebSocket();
-            var authBody = new { uid = _uid, roomid = _roomId, protover = protoVer, platform = "web", type = 2 };
+            var authBody = new { uid = _uid, roomid = _roomId, protover = protoVer, buvid = GetBuVid(), platform = "web", type = 2 };
             var authPacket = CreateWsPacket(ClientOperation.OpAuth, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(authBody)));
             var heartPacket = CreateWsPacket(ClientOperation.OpHeartbeat, Array.Empty<byte>());
             await _clientWebSocket.ConnectAsync(new Uri(WsHost), _webSocketCancelToken.Token);
