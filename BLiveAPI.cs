@@ -206,8 +206,8 @@ public class BLiveApi : BLiveEvents
     ///     连接指定的直播间
     /// </summary>
     /// <param name="roomId">直播间id,可以是短位id</param>
-    /// <param name="protoVer">压缩类型2:zlib,3:brotli</param>
-    public async Task Connect(ulong roomId, int protoVer = 3)
+    /// <param name="protoVer">压缩类型2:zlib,3:brotli<br />unity中请使用zlib,使用brotli会导致unity闪退假死等问题!!!!</param>
+    public async Task Connect(ulong roomId, int protoVer)
     {
         if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();
         if (protoVer is not (2 or 3)) throw new InvalidProtoVerException();
