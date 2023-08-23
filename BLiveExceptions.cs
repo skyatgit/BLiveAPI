@@ -69,6 +69,17 @@ public class NetworkException : Exception
 }
 
 /// <summary>
+///     主机用户名编码异常
+/// </summary>
+public class DomainNameEncodingException : Exception
+{
+    /// <inheritdoc cref="DomainNameEncodingException" />
+    public DomainNameEncodingException() : base("主机用户名编码异常,请检查主机用户名中是否有非ASCII字符")
+    {
+    }
+}
+
+/// <summary>
 ///     字节集长度错误
 /// </summary>
 public class InvalidBytesLengthException : Exception

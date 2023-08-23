@@ -180,6 +180,10 @@ public class BLiveApi : BLiveEvents
         {
             throw;
         }
+        catch (ArgumentException)
+        {
+            throw new DomainNameEncodingException();
+        }
         catch
         {
             throw new NetworkException();
@@ -188,8 +192,19 @@ public class BLiveApi : BLiveEvents
 
     private static string GetBuVid()
     {
-        var result = new HttpClient().GetAsync("https://data.bilibili.com/v/").Result;
-        return result.Headers.GetValues("Set-Cookie").First().Split(';').First().Split('=').Last();
+        try
+        {
+            var result = new HttpClient().GetAsync("https://data.bilibili.com/v/").Result;
+            return result.Headers.GetValues("Set-Cookie").First().Split(';').First().Split('=').Last();
+        }
+        catch (ArgumentException)
+        {
+            throw new DomainNameEncodingException();
+        }
+        catch
+        {
+            throw new NetworkException();
+        }
     }
 
     /// <summary>
