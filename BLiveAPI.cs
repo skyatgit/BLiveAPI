@@ -22,7 +22,6 @@ public class BLiveApi : BLiveEvents
     private const string WsHost = "wss://broadcastlv.chat.bilibili.com/sub";
     private ClientWebSocket _clientWebSocket;
     private ulong? _roomId;
-    private ulong? _uid;
     private CancellationTokenSource _webSocketCancelToken;
 
 
@@ -163,7 +162,7 @@ public class BLiveApi : BLiveEvents
         return new ArraySegment<byte>(result);
     }
 
-    private static (ulong?, ulong?) GetRoomIdAndUid(ulong shortRoomId)
+    private static ulong? GetRoomId(ulong shortRoomId)
     {
         try
         {
@@ -172,9 +171,8 @@ public class BLiveApi : BLiveEvents
             var jsonResult = (JObject)JsonConvert.DeserializeObject(result);
             var roomInfo = (JObject)jsonResult?["data"]?["by_room_ids"]?.Values().FirstOrDefault();
             var roomId = (ulong?)roomInfo?.GetValue("room_id");
-            var uid = (ulong?)roomInfo?.GetValue("uid");
-            if (roomId is null || uid is null) throw new InvalidRoomIdException();
-            return (roomId, uid);
+            if (roomId is null) throw new InvalidRoomIdException();
+            return roomId;
         }
         catch (InvalidRoomIdException)
         {
@@ -207,6 +205,26 @@ public class BLiveApi : BLiveEvents
         }
     }
 
+    private static string GetKey(ulong? roomId, string sessdata)
+    {
+        try
+        {
+            var client = new HttpClient(new HttpClientHandler { UseCookies = false });
+            if (sessdata is not null) client.DefaultRequestHeaders.Add("Cookie", $"SESSDATA={sessdata}");
+            var result = client.GetStringAsync($"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={roomId}&type=0").Result;
+            var jsonResult = (JObject)JsonConvert.DeserializeObject(result);
+            return (string)jsonResult?["data"]?["token"];
+        }
+        catch (ArgumentException)
+        {
+            throw new DomainNameEncodingException();
+        }
+        catch
+        {
+            throw new NetworkException();
+        }
+    }
+
     /// <summary>
     ///     关闭当前对象中的WebSocket
     /// </summary>
@@ -222,16 +240,21 @@ public class BLiveApi : BLiveEvents
     /// </summary>
     /// <param name="roomId">直播间id,可以是短位id</param>
     /// <param name="protoVer">压缩类型2:zlib,3:brotli<br />unity中请使用zlib,使用brotli会导致unity闪退假死等问题!!!!</param>
-    public async Task Connect(ulong roomId, int protoVer)
+    /// <param name="uid">使用者的B站uid</param>
+    /// <param name="sessdata">使用者的B站Cookie中的SESSDATA</param>
+    public async Task Connect(ulong roomId, int protoVer, ulong uid = 0, string sessdata = null)
     {
         if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();
         if (protoVer is not (2 or 3)) throw new InvalidProtoVerException();
         try
         {
             _webSocketCancelToken = new CancellationTokenSource();
-            (_roomId, _uid) = GetRoomIdAndUid(roomId);
+            _roomId = GetRoomId(roomId);
             _clientWebSocket = new ClientWebSocket();
-            var authBody = new { uid = _uid, roomid = _roomId, protover = protoVer, buvid = GetBuVid(), platform = "web", type = 2 };
+            var authBody = new
+            {
+                uid = sessdata is null ? 0 : uid, roomid = _roomId, protover = protoVer, buvid = GetBuVid(), platform = "web", type = 2, key = GetKey(_roomId, uid == 0 ? null : sessdata)
+            };
             var authPacket = CreateWsPacket(ClientOperation.OpAuth, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(authBody)));
             var heartPacket = CreateWsPacket(ClientOperation.OpHeartbeat, Array.Empty<byte>());
             await _clientWebSocket.ConnectAsync(new Uri(WsHost), _webSocketCancelToken.Token);
@@ -252,7 +275,6 @@ public class BLiveApi : BLiveEvents
         finally
         {
             _roomId = null;
-            _uid = null;
             _clientWebSocket = null;
             _webSocketCancelToken = null;
         }
