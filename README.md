@@ -72,7 +72,8 @@ try
 //Connect的第一个参数代表房间号，支持短位房间号
 //第二个参数代表数据压缩协议的版本，只支持输入2或3,2代表zlib方式，3代表brotli方式
 //因为使用的Brotli库会在unity中报错的原因,建议在unity中使用时填入2
-    await api.Connect(1234,3);
+//Connect方法的后两位代表使用者的B站uid和Cookie中的SESSDATA，如果没有同时传入这两个参数将会以游客身份链接弹幕服务器
+    await api.Connect(1234,3,uid,sessdata);
 }
 catch (Exception e)
 {

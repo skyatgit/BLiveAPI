@@ -240,8 +240,8 @@ public class BLiveApi : BLiveEvents
     /// </summary>
     /// <param name="roomId">直播间id,可以是短位id</param>
     /// <param name="protoVer">压缩类型2:zlib,3:brotli<br />unity中请使用zlib,使用brotli会导致unity闪退假死等问题!!!!</param>
-    /// <param name="uid">使用者的B站uid</param>
-    /// <param name="sessdata">使用者的B站Cookie中的SESSDATA</param>
+    /// <param name="uid">使用者的B站uid,需要同时传入sessdata才有效</param>
+    /// <param name="sessdata">使用者的B站Cookie中的SESSDATA,需要同时传入uid才有效</param>
     public async Task Connect(ulong roomId, int protoVer, ulong uid = 0, string sessdata = null)
     {
         if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();
