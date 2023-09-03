@@ -205,15 +205,19 @@ public class BLiveApi : BLiveEvents
         }
     }
 
-    private static string GetKey(ulong? roomId, string sessdata)
+    private static (ulong, string) GetUidAndKey(ulong? roomId, string sessdata)
     {
         try
         {
             var client = new HttpClient(new HttpClientHandler { UseCookies = false });
-            if (sessdata is not null) client.DefaultRequestHeaders.Add("Cookie", $"SESSDATA={sessdata}");
-            var result = client.GetStringAsync($"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={roomId}&type=0").Result;
-            var jsonResult = (JObject)JsonConvert.DeserializeObject(result);
-            return (string)jsonResult?["data"]?["token"];
+            client.DefaultRequestHeaders.Add("Cookie", $"SESSDATA={sessdata}");
+            var userInfoResult = client.GetStringAsync("https://api.bilibili.com/x/space/v2/myinfo").Result;
+            var userInfoJsonResult = (JObject)JsonConvert.DeserializeObject(userInfoResult);
+            var uid = (ulong?)userInfoJsonResult?["data"]?["profile"]?["mid"] ?? 0;
+            if (uid == 0) client.DefaultRequestHeaders.Remove("Cookie");
+            var danmuInfoResult = client.GetStringAsync($"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={roomId}&type=0").Result;
+            var danmuInfoJsonResult = (JObject)JsonConvert.DeserializeObject(danmuInfoResult);
+            return (uid, (string)danmuInfoJsonResult?["data"]?["token"]);
         }
         catch (ArgumentException)
         {
@@ -240,9 +244,8 @@ public class BLiveApi : BLiveEvents
     /// </summary>
     /// <param name="roomId">直播间id,可以是短位id</param>
     /// <param name="protoVer">压缩类型2:zlib,3:brotli<br />unity中请使用zlib,使用brotli会导致unity闪退假死等问题!!!!</param>
-    /// <param name="uid">使用者的B站uid,需要同时传入sessdata才有效</param>
-    /// <param name="sessdata">使用者的B站Cookie中的SESSDATA,需要同时传入uid才有效</param>
-    public async Task Connect(ulong roomId, int protoVer, ulong uid = 0, string sessdata = null)
+    /// <param name="sessdata">使用者的B站Cookie中的SESSDATA</param>
+    public async Task Connect(ulong roomId, int protoVer, string sessdata = null)
     {
         if (_webSocketCancelToken is not null) throw new ConnectAlreadyRunningException();
         if (protoVer is not (2 or 3)) throw new InvalidProtoVerException();
@@ -250,11 +253,10 @@ public class BLiveApi : BLiveEvents
         {
             _webSocketCancelToken = new CancellationTokenSource();
             _roomId = GetRoomId(roomId);
+            var (uid, key) = GetUidAndKey(_roomId, sessdata);
+            if (uid == 0 && sessdata != null) throw new SessdataExpireException();
             _clientWebSocket = new ClientWebSocket();
-            var authBody = new
-            {
-                uid = sessdata is null ? 0 : uid, roomid = _roomId, protover = protoVer, buvid = GetBuVid(), platform = "web", type = 2, key = GetKey(_roomId, uid == 0 ? null : sessdata)
-            };
+            var authBody = new { uid, roomid = _roomId, protover = protoVer, buvid = GetBuVid(), platform = "web", type = 2, key };
             var authPacket = CreateWsPacket(ClientOperation.OpAuth, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(authBody)));
             var heartPacket = CreateWsPacket(ClientOperation.OpHeartbeat, Array.Empty<byte>());
             await _clientWebSocket.ConnectAsync(new Uri(WsHost), _webSocketCancelToken.Token);

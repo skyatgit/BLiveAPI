@@ -111,3 +111,14 @@ public class WebSocketErrorException : Exception
     {
     }
 }
+
+/// <summary>
+///     SESSDATA过期
+/// </summary>
+public class SessdataExpireException : Exception
+{
+    /// <inheritdoc cref="SessdataExpireException" />
+    public SessdataExpireException() : base("SESSDATA过期")
+    {
+    }
+}
