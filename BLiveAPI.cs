@@ -47,7 +47,7 @@ public class BLiveApi : BLiveEvents
                 OnOpHeartbeatReply(BytesToInt(messageData), messageData);
                 break;
             case ServerOperation.OpSendSmsReply:
-                OnOpSendSmsReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)));
+                OnOpSendSmsReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)), messageData);
                 break;
             default:
                 throw new UnknownServerOperationException(operation);
