@@ -44,7 +44,7 @@ public class BLiveApi : BLiveEvents
                 OnOpAuthReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)), _roomId, messageData);
                 break;
             case ServerOperation.OpHeartbeatReply:
-                OnOpHeartbeatReply(BytesToInt(messageData), messageData);
+                OnOpHeartbeatReply(BytesToInt(new ArraySegment<byte>(messageData, 0, messageData.Length).ToArray()), messageData);
                 break;
             case ServerOperation.OpSendSmsReply:
                 OnOpSendSmsReply((JObject)JsonConvert.DeserializeObject(Encoding.UTF8.GetString(messageData)), messageData);
