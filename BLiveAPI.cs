@@ -54,6 +54,23 @@ public class BLiveApi : BLiveEvents
         }
     }
 
+    /// <summary>
+    ///     暴露DecodePacket方法
+    /// </summary>
+    /// <param name="packetData">需要解包的数据</param>
+    /// <param name="throwError">是否抛出异常</param>
+    public void DecodePacket(byte[] packetData, bool throwError)
+    {
+        try
+        {
+            DecodePacket(packetData);
+        }
+        catch (Exception)
+        {
+            if (throwError) throw;
+        }
+    }
+
     private void DecodePacket(byte[] packetData)
     {
         while (true)
